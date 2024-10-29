@@ -147,7 +147,9 @@ def send_file(server_ip, server_port):
             except socket.timeout:
                 logging.info("Timeout occurred, retransmitting unacknowledged packets")
                 cc.on_timeout()
-                retransmit_unacked_packets(server_socket, client_address, unacked_packets)
+                seq_num = min(unacked_packets.keys())
+                unacked_packets = {}
+                # retransmit_unacked_packets(server_socket, client_address, unacked_packets)
 
             if not chunk and len(unacked_packets) == 0:
                 logging.info("File transfer complete")

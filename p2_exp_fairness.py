@@ -29,11 +29,11 @@ class DumbbellTopo(Topo):
 
         buffer_size = 500
         # Link between sw1 and sw2 (bottleneck link)
-        self.addLink(sw1, sw2, bw=100, delay='5ms', max_queue_size=buffer_size)
+        self.addLink(sw1, sw2, bw=100, delay='5ms', max_queue_size=buffer_size, use_htb=True, r2q=1000)
         
         print("delay is ", delay_sw2_s2)
         # Link between sw2 and s2 with specified latency
-        self.addLink(s2, sw2, delay=delay_sw2_s2)
+        self.addLink(s2, sw2, delay=delay_sw2_s2, use_htb=True, r2q=1000)
 
 def jain_fairness_index(allocations):
     n = len(allocations)
@@ -115,18 +115,18 @@ def run():
             s2_pid = s2.cmd(s2_cmd)
             time.sleep(1)
             
-            start_time_c1 = time.time()
-            c1_pid = ""
-            c2_pid = ""
+            # Add error handling for process management
             while True:
-                c1_pid_raw = c1.cmd(c1_cmd).strip()
-                if len(c1_pid_raw.split()) == 0:
-                    continue
-                else:
-                    c1_pid = c1_pid_raw.split()[-1]
-                    print("started client 1 with PID: {c1_pid}")
-                    break
-            
+                try:
+                    c1_pid_raw = c1.cmd(c1_cmd).strip()
+                    if len(c1_pid_raw.split()) > 0:
+                        c1_pid = c1_pid_raw.split()[-1]
+                        print(f"started client 1 with PID: {c1_pid}")
+                        break
+                except Exception as e:
+                    print(f"Error starting c1: {e}")
+                    time.sleep(1)
+
             start_time_c2 = time.time()
 
             while True:
@@ -142,7 +142,12 @@ def run():
             end_time_c1 = None
             end_time_c2 = None
             # Polling loop to check when each process completes
+            MAX_WAIT_TIME = 300  # 5 minutes
+            start_wait = time.time()
             while end_time_c1 is None or end_time_c2 is None:
+                if time.time() - start_wait > MAX_WAIT_TIME:
+                    print("Timeout reached waiting for processes to complete")
+                    break
                 # Check if process for c1 has completed
                 if end_time_c1 is None:
                     result_c1 = c1.cmd(f'ps')
